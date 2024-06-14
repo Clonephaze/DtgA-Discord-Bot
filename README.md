@@ -1,6 +1,6 @@
 <p align="center">
   <a href="" rel="noopener">
- <img width=200px height=200px src="https://media.discordapp.net/attachments/978056569994502184/1227730375850328094/Logo_Overlay.png?ex=666a1183&is=6668c003&hm=6b985a580402d8b9156b43502bd1ac6f1ccf8f4352bd35d358f70656464f0061&=&format=webp&quality=lossless&width=657&height=621" alt="Project logo"></a>
+ <img width=200px height=200px src="https://i.imgur.com/yvVOTYZ.png" alt="Project logo"></a>
 </p>
 <h3 align="center">DtgA Discord Bot</h3>
 
