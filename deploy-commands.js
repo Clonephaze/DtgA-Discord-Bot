@@ -12,7 +12,7 @@ for (const folder of commandFolders) {
 	// Grab all the command files from the commands directory
 	const commandsPath = path.join(foldersPath, folder);
 	const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
-	// Grab the SlashCommandBuilder#toJSON() output of each command's data for deployment
+	// Add each command's data to the commands array
 	for (const file of commandFiles) {
 		const filePath = path.join(commandsPath, file);
 		const command = require(filePath);
@@ -26,7 +26,7 @@ for (const folder of commandFolders) {
 }
 
 // Construct and prepare an instance of the REST module
-const rest = new REST().setToken(token);
+const rest = new REST({ version: '10' }).setToken(token);
 
 // and deploy your commands!
 (async () => {
