@@ -6,7 +6,7 @@ const { token, clientId, guildId } = require('./config.json');
 const sequelize = require('./sequelize');
 const User = require('./models/User');
 
-// Create a new Discord client with the Guilds intent
+// Create a new Discord client with required intents
 const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent, GatewayIntentBits.DirectMessages] });
 
 // Create a collection to store commands and cooldowns
@@ -71,22 +71,28 @@ client.on('messageCreate', async message => {
 });
 
 // Handle spam keywords
+/**
+ * This function handles spam keywords in messages.
+ * It checks if a message contains any of the spam keywords.
+ * If it does, it deletes the message, increments the user's warning count,
+ * and takes appropriate action based on the user's warning count.
+ *
+ * @param {Message} message - The message object received from the Discord API
+ */
 async function handleSpamKeywords(message) {
-	const userId = message.author.id;
-
+	const userId = message.author.id; // Get the ID of the user who sent the message
 	if (spamKeywords.some(keyword => message.content.toLowerCase().includes(keyword))) {
 		await message.delete();
-
+		// Find the user in the database, or create a new one if it doesn't exist. Then increment their warning count
 		let user = await User.findOne({ where: { id: userId } });
 		if (!user) {
 			user = await User.create({ id: userId });
 		}
-
 		user.warnings += 1;
 		await user.save();
 
+		// Take appropriate action based on the user's warning count
 		const warnings = user.warnings;
-
 		if (warnings === 1) {
 			await sendDirectMessage(message.author, 'Please do not spam. Your message was automatically deleted. You now have 1 warning.');
 		}
@@ -102,27 +108,41 @@ async function handleSpamKeywords(message) {
 	}
 }
 
-// Handle message rate limit
+/**
+ * This function handles the message rate limit for users.
+ * It keeps track of the user's messages and deletes messages if the user
+ * sends more than the allowed number of messages within a certain timeframe.
+ * @param {Message} message - The message object received from the Discord API
+ */
 function handleMessageRateLimit(message) {
 	const now = Date.now();
 	const userId = message.author.id;
 
+	// Check if the user's message log exists
+	// If it doesn't, create an empty array for that user
 	if (!userMessages.has(userId)) {
 		userMessages.set(userId, []);
 	}
 
+	// Get the user's message log, add the current message to the log, and filter out messages that are older than the allowed timeframe
 	const userMessageLog = userMessages.get(userId);
 	userMessageLog.push({ timestamp: now, message });
-	userMessages.set(userId, userMessageLog.filter(msg => now - msg.timestamp < timeframe));
+	const filteredLog = userMessageLog.filter(msg => now - msg.timestamp < timeframe);
+	userMessages.set(userId, filteredLog);
 
-	if (userMessageLog.length >= messageLimit) {
-		userMessageLog.forEach(msg => msg.message.delete().catch(console.error));
+	// Check if the user has reached the allowed message limit, and if so, delete all the messages in the user's message log and send a direct message to the user explaining the limit and the deletion of their messages
+	if (filteredLog.length >= messageLimit) {
+		filteredLog.forEach(msg => msg.message.delete().catch(console.error));
 		sendDirectMessage(message.author, 'Please refrain from sending too many messages in a short period. (5 messages in 10 seconds) Your messages were automatically deleted.');
+		// Remove the user's message log from memory
 		userMessages.delete(userId);
 	}
 }
 
-// Send a direct message to a user
+/** Function for sending a direct message to a user
+ * @param {User} user - The user to send the message to
+ * @param {string} content - The content of the message
+*/
 async function sendDirectMessage(user, content) {
 	try {
 		await user.send(content);
@@ -132,7 +152,12 @@ async function sendDirectMessage(user, content) {
 	}
 }
 
-// Timeout a user
+/** Function for timing out a user
+ * @param {Message} message - The message object received from the Discord API
+ * @param {string} userId - The ID of the user to timeout
+ * @param {number} timeoutDuration - The duration of the timeout in milliseconds
+ * @param {string} reason - The reason for the timeout
+*/
 async function timeoutUser(message, userId, timeoutDuration, reason) {
 	try {
 		await message.guild.members.cache.get(userId).timeout(timeoutDuration, 'Spamming messages');
@@ -143,7 +168,12 @@ async function timeoutUser(message, userId, timeoutDuration, reason) {
 	}
 }
 
-// Ban a user
+
+/** Function for banning a user
+ * @param {Message} message - The message object received from the Discord API
+ * @param {string} userId - The ID of the user to ban
+ * @param {string} reason - The reason for the ban
+*/
 async function banUser(message, userId, reason) {
 	try {
 		await message.guild.members.ban(userId, { reason: 'Spamming messages' });
@@ -188,12 +218,10 @@ client.once('ready', async () => {
 	}
 });
 
+// Generic error handlers for uncaught exceptions and unhandled rejections
 process.on('uncaughtException', (error) => {
 	console.error('Uncaught Exception:', error);
-	// Optionally, send a notification to a Discord channel
 });
-
 process.on('unhandledRejection', (error) => {
 	console.error('Unhandled Rejection:', error);
-	// Optionally, send a notification to a Discord channel
 });
